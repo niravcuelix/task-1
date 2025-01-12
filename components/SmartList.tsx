@@ -8,17 +8,13 @@ import { Card } from '@/components/ui/card';
 import { Star, Loader2 } from 'lucide-react';
 import { debounce } from '@/lib/utils';
 
-interface SmartListProps {
-  initialData: Review[];
-}
-
 const ITEM_HEIGHT = 180;
 const ITEMS_PER_PAGE = 100;
 
-export function SmartList({ initialData }: SmartListProps) {
-  const [items, setItems] = useState<Review[]>(initialData);
-  const [total, setTotal] = useState(initialData.length);
-  const [loading, setLoading] = useState(false);
+export function SmartList() {
+  const [items, setItems] = useState<Review[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [pages, setPages] = useState(1);
@@ -31,41 +27,40 @@ export function SmartList({ initialData }: SmartListProps) {
     containerRef,
   });
 
-
   const controllerRef = useRef<AbortController | null>(null);
   const fetchData = async (query: string, page: number = 1) => {
     // Cancel any ongoing fetch request
     if (controllerRef.current) {
       controllerRef.current.abort();
     }
-    
+
     const controller = new AbortController();
     controllerRef.current = controller;
-  
+
     setLoading(true);
     setError(null);
-  
+
     try {
       const params = new URLSearchParams({
         query,
         page: page.toString(),
         limit: ITEMS_PER_PAGE.toString(),
       });
-  
+
       const response = await fetch(`/api/search?${params}`, {
         signal: controller.signal,
       });
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-  
+
       const data: SearchResponse = await response.json();
-  
+
       if (data.error) {
         throw new Error(data.error);
       }
-  
+
       // Append or replace items based on the page
       setItems((prevItems) => (page === 1 ? data.items : [...prevItems, ...data.items]));
       setTotal(data.total);
@@ -78,6 +73,7 @@ export function SmartList({ initialData }: SmartListProps) {
       setLoading(false);
     }
   };
+
   const debouncedFetchData = useCallback(
     debounce((query: string, page: number) => {
       fetchData(query, page);
@@ -90,6 +86,11 @@ export function SmartList({ initialData }: SmartListProps) {
     setPages(1); // Reset page to 1 when the query changes
     debouncedFetchData(query, 1); // Trigger the debounced fetch function
   };
+
+  // Initial data fetch on component mount
+  useEffect(() => {
+    fetchData('', 1);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -164,11 +165,10 @@ export function SmartList({ initialData }: SmartListProps) {
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star
                           key={i}
-                          className={`w-4 h-4 ${
-                            i < item.rating
-                              ? 'text-yellow-400 fill-yellow-400'
-                              : 'text-gray-300'
-                          }`}
+                          className={`w-4 h-4 ${i < item.rating
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-gray-300'
+                            }`}
                         />
                       ))}
                     </div>
